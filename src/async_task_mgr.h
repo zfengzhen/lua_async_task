@@ -1,7 +1,7 @@
 /**
 * @file async_task_mgr.h
 * @brief 异步任务管理器
-* @author ferguszhang
+* @author fergus
 * @version 0.0.1
 * @date 2013-12-06
 */
