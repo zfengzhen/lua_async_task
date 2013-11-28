@@ -32,11 +32,6 @@ extern "C"
     #include "lauxlib.h"
 };
 
-enum {
-    E_TASK_LOGIN = 1,
-    E_TASK_OTHER,
-};
-
 class AsyncTaskMgr
 {
 public:
@@ -44,15 +39,13 @@ public:
     ~AsyncTaskMgr();
     int init(const char *lua_file);
     void register_func(const char *func_name, lua_CFunction func); 
-    int create_task(int task_type);
+    int create_task(const char* lua_func, int task_id);
+    void set_task_id(int task_id);
     void push_data(int task_id, void *data);
     int resume(int task_id);
     void close_task(int task_id);
 private:
-    const char *get_task_name(int task_type);
-private:
     lua_State *master_state;
-    static int free_id;
 };
 
 #endif

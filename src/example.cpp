@@ -6,13 +6,14 @@
 int main()
 {
     int ret = 0;
+    // task_id在实际的使用当中由其他类分配，可以跟定时器的id结合在一块
+    int task_id = 1;
     
     AsyncTaskMgr mgr;
 
     mgr.init("task_main.lua");
     // 1 假设收到一个客户端请求，创建一个TASK
-    int task_id = 0;
-    task_id = mgr.create_task(E_TASK_LOGIN);
+    task_id = mgr.create_task("login", task_id);
    
     // 2 该请求需要传递的参数传入TASK 并启动, 假设为登录
     ret = mgr.resume(task_id);
