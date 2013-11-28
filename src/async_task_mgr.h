@@ -32,19 +32,9 @@ extern "C"
     #include "lauxlib.h"
 };
 
-class AsyncTask
-{
-public:
-    AsyncTask();
-    ~AsyncTask();
-    int Resume();
-    int  Init(const char *lua_file, uint64_t task_id);
-    void PushPkg(const char *pkg_buf, size_t pkg_len);
-    inline uint64_t get_task_id() { return task_id; };
-private:
-    lua_State *state;
-    lua_State *co;
-    uint64_t task_id;
+enum {
+    E_TASK_LOGIN = 1,
+    E_TASK_OTHER,
 };
 
 class AsyncTaskMgr
@@ -52,13 +42,17 @@ class AsyncTaskMgr
 public:
     AsyncTaskMgr();
     ~AsyncTaskMgr();
-    AsyncTask * CreateTask(const char *lua_file);
-    void FiniTask(uint64_t task_id);
-
+    int init(const char *lua_file);
+    void register_func(const char *func_name, lua_CFunction func); 
+    int create_task(int task_type);
+    void push_data(int task_id, void *data);
+    int resume(int task_id);
+    void close_task(int task_id);
 private:
-    typedef std::map<uint64_t, AsyncTask *> AsyncTaskMap_T;
-    AsyncTaskMap_T asynctask_map;
-    int free_id;
+    const char *get_task_name(int task_type);
+private:
+    lua_State *master_state;
+    static int free_id;
 };
 
 #endif

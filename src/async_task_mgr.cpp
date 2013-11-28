@@ -8,99 +8,117 @@
 
 #include "async_task_mgr.h"
 
-AsyncTask::AsyncTask()
-{
-    state = NULL;
-    co = NULL;
-}
+const char *STR_TASK_LOGIN = "login";
+const char *STR_TASK_NULL = "";
 
-AsyncTask::~AsyncTask()
-{
-    lua_close(state);
-    state = NULL;
-}
-
-int AsyncTask::Resume()
-{
-    return lua_resume(co, state, 0);
-}
-
-void AsyncTask::PushPkg(const char *pkg_buf, size_t pkg_len)
-{
-    lua_pushlstring(state, pkg_buf, pkg_len);
-    lua_setglobal(state, "PKG");
-}
-
-int AsyncTask::Init(const char *lua_file, uint64_t task_id)
-{
-    int ret = 0;
-
-    state = luaL_newstate();
-    if ( unlikely( state == NULL ) )
-        return -1;
-    
-    luaL_openlibs(state);  
-
-    ret = luaL_dofile(state, lua_file);
-    if ( unlikely( ret != 0 ) )
-        return -2;
-
-    lua_getglobal(state, "TASK");
-    ret = lua_isthread(state, -1);
-    if ( unlikely( ret != 1 ) )
-        return -2;
-     
-    co = lua_tothread(state, -1);
-    lua_settop(state, 0);
-    if ( unlikely ( co == NULL ) )
-        return -3;
-
-    this->task_id = task_id;
-
-    return 0;
-}
+int AsyncTaskMgr::free_id = 11;
 
 AsyncTaskMgr::AsyncTaskMgr()
 {
-    free_id = 1;
+    master_state = NULL;
 }
 
 AsyncTaskMgr::~AsyncTaskMgr()
 {
-
+    lua_close(master_state);
+    master_state = NULL;
 }
 
-AsyncTask * AsyncTaskMgr::CreateTask(const char *lua_file)
+int AsyncTaskMgr::init(const char *lua_file)
 {
     int ret = 0;
 
-    AsyncTask * async_task = new AsyncTask();
-    if ( unlikely( async_task == NULL ) )
-        return NULL;
-
-    ret = async_task->Init(lua_file, free_id);
-
-    if ( unlikely( ret != 0 ) )
-    {
-        delete async_task;
-        return NULL;
-    }
-
-    asynctask_map.insert( std::pair<uint64_t, AsyncTask *>( free_id , async_task ) );
-    free_id++; 
+    master_state = luaL_newstate();
+    if ( unlikely( master_state == NULL ) )
+        return -1;
     
-    return async_task;
+    luaL_openlibs(master_state);  
+
+    ret = luaL_dofile(master_state, lua_file);
+    if ( unlikely( ret != 0 ) )
+        return -2;
+
+    lua_newtable(master_state);
+    lua_setglobal(master_state, "TASK_TABLE");
+
+    return 0;
 }
 
-void AsyncTaskMgr::FiniTask(uint64_t task_id)
+void AsyncTaskMgr::register_func(const char *func_name, lua_CFunction func)
 {
-    AsyncTaskMap_T::iterator iter = asynctask_map.find( task_id );                                                          
-    if( likely( iter != asynctask_map.end() ) )                                                                                               
-    {                                                                                                                                 
-        delete iter->second;                                                                                                         
-        asynctask_map.erase( iter );                                                                                                
-    }                                                                                                                                 
+    lua_register(master_state, func_name, func);
+}
 
-    return;   
+int AsyncTaskMgr::create_task(int task_type)
+{
+    int task_id = free_id++;
+
+    lua_getglobal(master_state, "TASK_TABLE");
+    lua_pushinteger(master_state, task_id);
+    lua_State *co = lua_newthread(master_state);
+    lua_settable(master_state, -3);
+    lua_pushinteger(co, task_id);
+    lua_setglobal(co, "TASK_ID");
+    lua_getglobal(co, get_task_name(task_type));
+    lua_settop(master_state, 0);
+
+    return task_id;
+}
+
+void AsyncTaskMgr::push_data(int task_id, void *data)
+{
+    lua_getglobal(master_state, "TAST_TABLE");
+    lua_pushinteger(master_state, task_id);
+    lua_gettable(master_state, -2);
+
+    lua_State *co = lua_tothread(master_state, -1);
+    lua_settop(master_state, 0);
+
+    if (co == NULL)
+        return;
+
+    lua_pushlightuserdata(co, data);
+    lua_setglobal(co, "DATA");
+
+    return;
+}
+
+int AsyncTaskMgr::resume(int task_id)
+{
+    lua_getglobal(master_state, "TASK_TABLE");
+    lua_pushinteger(master_state, task_id);
+    lua_gettable(master_state, -2);
+
+    lua_State *co = lua_tothread(master_state, -1);
+    lua_settop(master_state, 0);
+
+    if (co == NULL)
+        return -1;
+
+    return lua_resume(co, master_state, 0);
+}
+
+void AsyncTaskMgr::close_task(int task_id)
+{
+    lua_getglobal(master_state, "TASK_TABLE");
+    lua_pushinteger(master_state, task_id);
+    lua_pushnil(master_state);
+    lua_settable(master_state, -3);
+    lua_settop(master_state, 0);
+
+    return;
+}
+
+const char *AsyncTaskMgr::get_task_name(int task_type)
+{
+    switch(task_type)
+    {
+        case E_TASK_LOGIN:
+            return STR_TASK_LOGIN;
+        default:
+            return STR_TASK_NULL;
+    } 
+
+    return STR_TASK_NULL;
 }
 
