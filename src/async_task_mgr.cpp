@@ -74,7 +74,7 @@ void AsyncTaskMgr::set_task_id(int task_id)
     lua_setglobal(co, "TASK_ID");
 }
 
-void AsyncTaskMgr::push_data(int task_id, void *data)
+void AsyncTaskMgr::push_data(int task_id, const char* lua_var, void *data)
 {
     lua_getglobal(master_state, "TAST_TABLE");
     lua_pushinteger(master_state, task_id);
@@ -87,7 +87,43 @@ void AsyncTaskMgr::push_data(int task_id, void *data)
         return;
 
     lua_pushlightuserdata(co, data);
-    lua_setglobal(co, "DATA");
+    lua_setglobal(co, lua_var);
+
+    return;
+}
+
+void AsyncTaskMgr::push_integer(int task_id, const char* lua_var, int num)
+{
+    lua_getglobal(master_state, "TAST_TABLE");
+    lua_pushinteger(master_state, task_id);
+    lua_gettable(master_state, -2);
+
+    lua_State *co = lua_tothread(master_state, -1);
+    lua_settop(master_state, 0);
+
+    if (co == NULL)
+        return;
+
+    lua_pushinteger(co, num);
+    lua_setglobal(co, lua_var);
+
+    return;
+}
+
+void AsyncTaskMgr::push_string(int task_id, const char* lua_var, const char* str)
+{
+    lua_getglobal(master_state, "TAST_TABLE");
+    lua_pushinteger(master_state, task_id);
+    lua_gettable(master_state, -2);
+
+    lua_State *co = lua_tothread(master_state, -1);
+    lua_settop(master_state, 0);
+
+    if (co == NULL)
+        return;
+
+    lua_pushstring(co, str);
+    lua_setglobal(co, lua_var);
 
     return;
 }
