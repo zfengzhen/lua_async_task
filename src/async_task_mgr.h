@@ -46,6 +46,7 @@ public:
     void push_string(int task_id, const char* lua_var, const char*  str);
     int resume(int task_id);
     void close_task(int task_id);
+    void reload();
 private:
     lua_State *master_state;
 };

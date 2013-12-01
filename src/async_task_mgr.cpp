@@ -154,3 +154,8 @@ void AsyncTaskMgr::close_task(int task_id)
     return;
 }
 
+void AsyncTaskMgr::reload()
+{
+    lua_getglobal(master_state, "RELOAD");
+    lua_pcall(master_state, 0, 0, 0);
+}
