@@ -42,6 +42,7 @@ public:
     int create_task(const char* lua_func, int task_id);
     void set_task_id(int task_id);
     void push_data(int task_id, const char* lua_var, void *data);
+    void push_userdata(int task_id, const char* lua_var, void *data, size_t size);
     void push_integer(int task_id, const char* lua_var, int num);
     void push_string(int task_id, const char* lua_var, const char*  str);
     int resume(int task_id);

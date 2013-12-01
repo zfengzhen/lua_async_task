@@ -6,6 +6,7 @@
 * @date 2013-12-06
 */
 
+#include <string.h>
 #include "async_task_mgr.h"
 
 AsyncTaskMgr::AsyncTaskMgr()
@@ -92,6 +93,27 @@ void AsyncTaskMgr::push_data(int task_id, const char* lua_var, void *data)
     return;
 }
 
+void AsyncTaskMgr::push_userdata(int task_id, const char* lua_var, void *data, size_t size)
+{
+    lua_getglobal(master_state, "TAST_TABLE");
+    lua_pushinteger(master_state, task_id);
+    lua_gettable(master_state, -2);
+
+    lua_State *co = lua_tothread(master_state, -1);
+    lua_settop(master_state, 0);
+
+    if (co == NULL)
+        return;
+
+    void* user_data = lua_newuserdata(co, size);
+    if (user_data == NULL)
+        return;
+
+    memcpy(user_data, data, size);
+    lua_setglobal(co, lua_var);
+
+    return;
+}
 void AsyncTaskMgr::push_integer(int task_id, const char* lua_var, int num)
 {
     lua_getglobal(master_state, "TAST_TABLE");
